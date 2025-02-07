@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 
 const generateAccessToken= async(user_email)=>{
 
-    const user=await prisma.user.findUnique({where:{email:email}})
+    const user=await prisma.user.findUnique({where:{email:user_email}})
 
 
 
@@ -24,7 +24,27 @@ const generateAccessToken= async(user_email)=>{
 
     },
     process.env.ACCESS_TOKEN_SECRET,
-    {expiresIn:ACCESS_TOKEN_EXPIRY})
+    {expiresIn:process.env.ACCESS_TOKEN_EXPIRY})
+
+    return token
+
+}
+
+const generateRefreshToken= async(user_email)=>{
+
+    const user=await prisma.user.findUnique({where:{email:user_email}})
+
+
+
+
+    const token = jwt.sign({
+        id:user.id,
+       
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {expiresIn:process.env.REFRESH_TOKEN_EXPIRY})
+
+    return token
 
 }
 
@@ -104,23 +124,43 @@ const loginUser= asyncHandler(async(req,res)=>{
     }
 
     //check password is correct
+    //
 
     const isPasswordCorrect= await bcrypt.compare(password,user.password)
 
     if(isPasswordCorrect){
+
+         //give access token and refresh token 
+
+        const accessToken=await generateAccessToken(user.email)
+
+        const refreshToken=await generateRefreshToken(user.email)
+
+        const options={
+            httpOnly:true,
+            secure:true
+        }
+
+        return res
+        .cookie("accessToken",accessToken,options)
+        .cookie("refreshToken",refreshToken,options)
+        .status(200)
+        .json(new apiResponse(200,{user,accessToken,refreshToken},`welcome in ${user.name}`))
+       
         
-
-
-        generateAccessToken(user.email)
-        return res.status(200).json(new apiResponse(200,"",`welcome in ${user.name}`))
-        //give access token and refresh token 
     }else{
         throw new apiError(401,"incorrect password")
+        
     }
+    
 
-
-
+    
 
 })
+
+
+
+
+
 
 export {create_user,loginUser}
