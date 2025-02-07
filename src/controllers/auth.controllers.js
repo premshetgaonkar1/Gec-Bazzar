@@ -1,34 +1,40 @@
 import { PrismaClient } from '@prisma/client';
 import validator from "validator"
 import bcrypt from "bcrypt"
+import { apiError } from '../utils/apiError.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { apiResponse } from '../utils/apiResponse.js';
 
 
 const prisma = new PrismaClient();
 
- async function create_user(req,res){
+ const create_user= asyncHandler( async (req,res)=>{
 
     const {email,phone,password,name}=req.body
 
     if(!(email||phone||password||name)){
-        return res.status(400).json({error:"all fields are required"})
+        // return res.status(400).json({error:"all fields are required"})
+
+        throw new apiError(400,"all fields are required")
+
+
     }
 
     if(!validator.isEmail(email)){
-        return res.status(400).json({error:"invalid email"})
+
+      throw new apiError(400,"invalid email")
 
     }
     if(!validator.isMobilePhone(phone)){
-        return res.status(400).json({error:"invalid phone number"})
+        throw new apiError(400,"mobile number should be of 10 digits")
 
     }
 
     if(password.length<6){
-        return res.status(400).json({error:"password must be atleast 6 letters"})
+       throw new apiError(400,"password should be minimum of 6 characters")
     }
 
     const hashedPassword =await bcrypt.hash(password,10)
-
-    try {
 
         const user =await prisma.user.create({
 
@@ -41,22 +47,18 @@ const prisma = new PrismaClient();
 
         })
 
-        console.log(user)
+        
 
-        return res.status(200).json({message:"user created successfully",user})
+        if(!user){
+
+            throw new apiError(500,"user was not registered by server")
+            
+        }
+
+        return res.status(200).json(new apiResponse(200,user,"user was created successfully"))
 
         
-        
-    } catch (error) {
-        console.log(error)
-        return res.status(400).json({error:"internal server error"})
-        
-    }
 
-
-
-
-
-}
+})
 
 export {create_user}
