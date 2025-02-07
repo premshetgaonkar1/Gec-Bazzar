@@ -158,9 +158,30 @@ const loginUser= asyncHandler(async(req,res)=>{
 
 })
 
+const logoutUser= asyncHandler(async(req,res)=>{
+
+    //we are just clearing out the access and refresh tokens
+
+    const options={
+        httpOnly:true,
+        secure:true
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
+    .json(
+        new apiResponse(200,"","user was logged out successfully")
+    )
+
+
+
+})
 
 
 
 
 
-export {create_user,loginUser}
+
+export {create_user,loginUser,logoutUser}
