@@ -4,9 +4,29 @@ import bcrypt from "bcrypt"
 import { apiError } from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { apiResponse } from '../utils/apiResponse.js';
+import jwt from 'jsonwebtoken'
 
 
 const prisma = new PrismaClient();
+
+
+const generateAccessToken= async(user_email)=>{
+
+    const user=await prisma.user.findUnique({where:{email:email}})
+
+
+
+
+    const token = jwt.sign({
+        id:user.id,
+        email:user.email,
+        name:user.name
+
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {expiresIn:ACCESS_TOKEN_EXPIRY})
+
+}
 
  const create_user= asyncHandler( async (req,res)=>{
 
@@ -74,4 +94,33 @@ const prisma = new PrismaClient();
 
 })
 
-export {create_user}
+const loginUser= asyncHandler(async(req,res)=>{
+    const {email, password}=req.body
+
+    const user=await prisma.user.findUnique({where:{email:email}})
+
+    if(!user){
+        throw new apiError(400,"no such user exists")
+    }
+
+    //check password is correct
+
+    const isPasswordCorrect= await bcrypt.compare(password,user.password)
+
+    if(isPasswordCorrect){
+        
+
+
+        generateAccessToken(user.email)
+        return res.status(200).json(new apiResponse(200,"",`welcome in ${user.name}`))
+        //give access token and refresh token 
+    }else{
+        throw new apiError(401,"incorrect password")
+    }
+
+
+
+
+})
+
+export {create_user,loginUser}
