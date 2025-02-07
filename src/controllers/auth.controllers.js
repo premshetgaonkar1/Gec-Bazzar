@@ -34,6 +34,16 @@ const prisma = new PrismaClient();
        throw new apiError(400,"password should be minimum of 6 characters")
     }
 
+    const existingUser= await prisma.user.findUnique({
+        where:{
+            email
+        }
+    })
+
+    if(existingUser){
+        throw new apiError(400,"user already existing")
+    }
+
     const hashedPassword =await bcrypt.hash(password,10)
 
         const user =await prisma.user.create({
@@ -46,6 +56,9 @@ const prisma = new PrismaClient();
             }
 
         })
+
+
+        
 
         
 
