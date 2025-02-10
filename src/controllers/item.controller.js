@@ -6,6 +6,7 @@ import { apiResponse } from "../utils/apiResponse.js";
 
 
 
+
 const prisma = new PrismaClient()
 
 
@@ -70,16 +71,16 @@ const fetchItems = asyncHandler(async(req,res)=>{
 const fetchSpecificItem= asyncHandler(async(req,res)=>{
 
 
-    const{name}=req.body
+    const{id}=req.params
 
     const item= await prisma.items.findUnique({
         where:{
-            name:name
+            id:id
         }
     })
 
     if(!item){
-        throw new apiError(400,`couldn't find ${name}`)
+        throw new apiError(400,`couldn't find ${item.name}`)
 
     }
 
@@ -90,11 +91,11 @@ const fetchSpecificItem= asyncHandler(async(req,res)=>{
 
 
 const deleteItem=asyncHandler(async(req,res)=>{
-    const {name}=req.body
+    const {id}=req.params
 
     const item=await prisma.items.findUnique({
         where:{
-            name:name
+            id:id
         }
     }) 
     console.log(item)
@@ -105,10 +106,97 @@ const deleteItem=asyncHandler(async(req,res)=>{
 
    await prisma.items.delete({
         where:{
-            name:name
+            id:id
         }
     })
+    return res.status(200).json(
+        new apiResponse(201,item,"deleted successfully")
+    )
 })
+
+const updateItem=asyncHandler(async(req,res)=>{
+
+    //since status is changed on separate controller just check again 
+    const{id}=user.params
+    const{description,price,status}=req.body
+    
+
+    const updatedData={}
+    if(description!==undefined)updatedData.description=description
+    if(price!==undefined)updatedData.price=price
+    if(status!==undefined)updatedData.status=status
+
+    if(!id){
+        throw new apiError(400,"enter the id of the item you want to edit")
+    }
+
+    const updatedItem=await prisma.items.update({
+        where:{
+            id:id
+        },
+        data:updatedData,
+            
+        
+        
+    })
+    
+    if(!updatedItem){
+        throw new apiError(400,"the fields havent been updated ")
+    }
+
+    return res.status(200).json(
+        new apiResponse(200,updatedItem,"the item has been successfully updated")
+    )
+    
+
+
+})
+
+const markItemAsSold=asyncHandler(async(req,res)=>{
+
+    const{id}=req.params
+    const{status}=req.body
+
+    const sellerId=req.user.id
+
+   
+    if(!id){
+        throw new apiError(400,"enter the id of the item you want to edit")
+    }
+
+    const updatedItem=await prisma.items.update({
+        where:{
+            id:id
+        },
+        data:{
+            status:status
+        },
+            
+        
+        
+    })
+    
+    if(!updatedItem){
+        throw new apiError(400,"the fields havent been updated ")
+    }
+
+    if(updatedItem.userId!==sellerId){
+        throw new apiError(403,"unauthorized to change the status of this item")
+    }
+
+    
+
+    return res.status(200).json(
+        new apiResponse(200,updatedItem,"the item has been successfully updated")
+    )
+    
+
+
+})
+
+
+
+
 
 
 
@@ -116,6 +204,8 @@ export{
     addItems,
     fetchItems,
     fetchSpecificItem,
-    deleteItem
+    deleteItem,
+    updateItem,
+    markItemAsSold
 }
 

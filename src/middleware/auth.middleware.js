@@ -19,6 +19,8 @@ import { apiError } from '../utils/apiError.js';
         }
     
         req.user= decodedToken
+
+        console.log("this is the decoded token ",decodedToken)
     
         next()
 
