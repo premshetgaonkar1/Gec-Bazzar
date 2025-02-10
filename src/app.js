@@ -1,4 +1,4 @@
-import express from "express"
+import express, { urlencoded } from "express"
 import cors from "cors"
 import dotenv from "dotenv"
 import cookieParser from "cookie-parser"
@@ -14,6 +14,7 @@ const app=express()
 app.use(cors())
 app.use(express.json())
 app.use(cookieParser())
+app.use(urlencoded({extended:true}))
 
 
 
@@ -22,6 +23,10 @@ import authRouter from "./routes/auth.routes.js"
 
 
 app.use("/api/v1",authRouter)
+
+import itemRouter from "./routes/item.routes.js"
+
+app.use("/api/v1",itemRouter)
 
 
 

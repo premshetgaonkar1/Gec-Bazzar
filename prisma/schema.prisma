@@ -13,53 +13,61 @@ datasource db {
   url      = env("DATABASE_URL")
   }
 
-  enum Status{
-    rejected
-    approved
-    pending 
-  }
-
-  enum Role{
-    user
-    admin
-  }
-
-
-model User{
-  id        String   @id @default(uuid())
-  role      Role @default(user)
-  email     String   @unique
-  phone     String   @unique
-  name      String?
-  password  String
-  createdAt DateTime @default(now())  
-  updatedAt DateTime @updatedAt
-  request Request[]
+ enum ItemStatus {
+  AVAILABLE
+  PENDING
+  SOLD
 }
 
-model Items{
-  id        String   @id @default(uuid())
-  price     Int
-  description String?
-  name      String   @unique
-  quantity  Int      
-  image_url String   
-  createdAt DateTime @default(now())  
-  updatedAt DateTime @updatedAt
+enum UserType {
+  BUYER
+  SELLER
+}
+
+
+model User {
+  id           String   @id @default(uuid())
+  role         UserType @default(BUYER)
+  email        String   @unique
+  phone        String   @unique
+  name         String?
+  password     String
+  refreshToken String?
+
+  createdAt    DateTime @default(now())  
+  updatedAt    DateTime @updatedAt
   
-  request Request[]
-
+  Items Items[]
+  Request Request[]
 }
 
-model Request{
-  id String @id @default(uuid())
-  itemId String
-  item Items @relation(fields: [itemId],references: [id])
-  userId String
-  user User @relation(fields: [userId],references: [id])
-  approvalStatus    Status @default(pending)
+model Items {
+  id          String   @id @default(uuid())
+  price       Float
+  description String?
+  name        String   @unique     
+  imageUrl    String   
+  createdAt   DateTime @default(now())  
+  updatedAt   DateTime @updatedAt
+  status      ItemStatus @default(AVAILABLE)
+
+  userId      String  // Foreign key to User
+  seller      User    @relation(fields: [userId], references: [id])
+
+  Request Request[]
+}
+
+model Request {
+  id        String   @id @default(uuid())
+  itemId    String
+  item      Items    @relation(fields: [itemId], references: [id])
+
+  userId    String  // Foreign key to User
+  buyer     User    @relation(fields: [userId], references: [id])
+
   createdAt DateTime @default(now())  
   updatedAt DateTime @updatedAt
-
 }
+
+
 

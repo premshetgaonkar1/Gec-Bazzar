@@ -10,9 +10,11 @@ import jwt from 'jsonwebtoken'
 const prisma = new PrismaClient();
 
 
-const generateAccessToken= async(user_email)=>{
-
-    const user=await prisma.user.findUnique({where:{email:user_email}})
+const generateAccessToken= async(email)=>{
+    
+    // const {email,password}=req.body
+    
+    const user=await prisma.user.findUnique({where:{email:email}})
 
 
 
@@ -30,9 +32,9 @@ const generateAccessToken= async(user_email)=>{
 
 }
 
-const generateRefreshToken= async(user_email)=>{
+const generateRefreshToken= async(email)=>{
 
-    const user=await prisma.user.findUnique({where:{email:user_email}})
+    const user=await prisma.user.findUnique({where:{email:email}})
 
 
 
@@ -50,9 +52,9 @@ const generateRefreshToken= async(user_email)=>{
 
  const create_user= asyncHandler( async (req,res)=>{
 
-    const {email,phone,password,name}=req.body
+    const {email,phone,password,name,refreshToken}=req.body
 
-    if(!(email||phone||password||name)){
+    if(!(email&&phone&&password&&name)){
         // return res.status(400).json({error:"all fields are required"})
 
         throw new apiError(400,"all fields are required")
@@ -74,11 +76,14 @@ const generateRefreshToken= async(user_email)=>{
        throw new apiError(400,"password should be minimum of 6 characters")
     }
 
-    const existingUser= await prisma.user.findUnique({
-        where:{
-            email
-        }
-    })
+    const existingUser = await prisma.user.findFirst({
+    where: {
+        OR: [
+            { email },
+            { phone }
+        ]
+    }
+})
 
     if(existingUser){
         throw new apiError(400,"user already existing")
@@ -92,7 +97,9 @@ const generateRefreshToken= async(user_email)=>{
                 email,
                 phone,
                 name,
-                password:hashedPassword
+                password:hashedPassword,
+
+                refreshToken
             }
 
         })
@@ -108,19 +115,25 @@ const generateRefreshToken= async(user_email)=>{
             
         }
 
-        return res.status(200).json(new apiResponse(200,user,"user was created successfully"))
+        return res.status(200).json(new apiResponse(201,user,"user was created successfully"))
 
         
 
 })
 
 const loginUser= asyncHandler(async(req,res)=>{
+    console.log(req.body);
+    
     const {email, password}=req.body
+
+    if(!(email&&password)){
+        throw new apiError(400,"email and passwords should be filled")
+    }
 
     const user=await prisma.user.findUnique({where:{email:email}})
 
     if(!user){
-        throw new apiError(400,"no such user exists")
+        throw new apiError(404,"no such user exists")
     }
 
     //check password is correct
@@ -136,9 +149,16 @@ const loginUser= asyncHandler(async(req,res)=>{
 
         const refreshToken=await generateRefreshToken(user.email)
 
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { refreshToken }
+        })
+
         const options={
-            httpOnly:true,
-            secure:true
+            httpOnly: true,
+            secure: true,
+            sameSite: "Strict",
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
         }
 
         return res
@@ -166,6 +186,11 @@ const logoutUser= asyncHandler(async(req,res)=>{
         httpOnly:true,
         secure:true
     }
+    await prisma.user.updateMany({
+        where: { refreshToken: req.cookies.refreshToken },
+        data: { refreshToken: "" }
+    })
+    
 
     return res
     .status(200)
