@@ -13,10 +13,10 @@ const prisma = new PrismaClient()
 //seller registers an item
 const addItems= asyncHandler(async(req,res)=>{
 
-    const{name,price,description,status,imageUrl}=req.body
+    const{name,price,description,imageUrl}=req.body
     const sellerId =req.user.id
 
-    if(!(name||price||status)){//add img url
+    if(!(name||price||description)){//add img url
         throw new apiError(400,"all the fields need to be filled")
     }
 
@@ -29,7 +29,7 @@ const addItems= asyncHandler(async(req,res)=>{
             price: parseFloat(price),
             description,
             imageUrl,
-            status,
+            status:"AVAILABLE",
             userId:sellerId
         }
     })
@@ -92,7 +92,8 @@ const fetchSpecificItem= asyncHandler(async(req,res)=>{
 
 
 const deleteItem=asyncHandler(async(req,res)=>{
-    const {id}=req.params
+    const {id}=req.params//item id
+    const sellerId=req.user.id
 
     const item=await prisma.items.findUnique({
         where:{
@@ -104,6 +105,23 @@ const deleteItem=asyncHandler(async(req,res)=>{
     if(!item){
         throw new apiError(400,"cannot delete an item which doesnt exist")
     }
+
+    //delete only if the item belongs to that particular seller 
+    if(sellerId!==item.userId){
+        throw new apiError(403,"this item dosent belong to you and you cannot delete this")
+    }
+
+    //when you are deleting you also delete the request which the buyers have generated 
+    //else there will be requests where items dont exist
+
+
+    await prisma.request.deleteMany({
+        where:{
+            itemId:id
+            
+        }
+    })
+
 
    await prisma.items.delete({
         where:{
@@ -119,6 +137,7 @@ const updateItem=asyncHandler(async(req,res)=>{
 
     //since status is changed on separate controller just check again 
     const{id}=user.params
+    const sellerId=req.user.id
     const{description,price,status}=req.body
     
 
@@ -127,8 +146,26 @@ const updateItem=asyncHandler(async(req,res)=>{
     if(price!==undefined)updatedData.price=price
     if(status!==undefined)updatedData.status=status
 
+
+
     if(!id){
         throw new apiError(400,"enter the id of the item you want to edit")
+    }
+
+
+    const item=await prisma.items.findUnique({
+        where:{
+            id:id
+        }
+    }) 
+   
+
+    if(!item){
+        throw new apiError(400,"cannot update an item which doesnt exist")
+    }
+
+    if(sellerId!==item.userId){
+        throw new apiError(403,"this item dosent belong to you and you cannot update this")
     }
 
     const updatedItem=await prisma.items.update({
@@ -156,8 +193,7 @@ const updateItem=asyncHandler(async(req,res)=>{
 const markItemAsSold=asyncHandler(async(req,res)=>{
 
     const{id}=req.params
-    const{status}=req.body
-
+    
     const sellerId=req.user.id
 
    
@@ -170,7 +206,7 @@ const markItemAsSold=asyncHandler(async(req,res)=>{
             id:id
         },
         data:{
-            status:status
+            status:"SOLD"
         },
             
         

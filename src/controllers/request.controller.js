@@ -7,6 +7,7 @@ import { apiResponse } from "../utils/apiResponse.js";
 
 
 
+
 const prisma = new PrismaClient()
 
 
@@ -15,15 +16,28 @@ const createRequest= asyncHandler(async(req,res)=>{
     const{itemId}=req.body
     const buyerId=req.user.id
 
-    
 
-    console.log("this is buyer id",buyerId)
 
     if(!itemId){
         throw new apiError(400,"enter the item id")
     }
 
 
+      // Check if the item exists and is not sold
+      const item = await prisma.items.findUnique({
+        where: { id: itemId }
+    })
+
+    if (!item) {
+        throw new apiError(404, "Item not found");
+    }
+
+    if (item.status === "SOLD") {
+        throw new apiError(400, "You cannot request a sold item");
+    }
+
+
+    
     const requestExist=await prisma.request.findFirst({
         where:{
             itemId:itemId,
@@ -35,16 +49,35 @@ const createRequest= asyncHandler(async(req,res)=>{
         throw new apiError(400,"you have already shown interest in this item ")
     }
 
-    const request=await prisma.request.create({
-       data:{ itemId:itemId,
-        userId:buyerId,
-       }
+
+    const request=await prisma.$transaction(async(prisma)=>{
+
+        const newRequest=await prisma.request.create({
+            data:{ 
+             itemId:itemId,
+             userId:buyerId,
+            }
+     
+         })
+     
+        
+         //once a buyer showes interest in an item a request is generated and status is changed from available to pending 
+     
+             await prisma.items.update({
+             where:{id:itemId},
+             data:{status:"PENDING"}
+         })
+
+         return newRequest
+     
 
     })
 
-    if(!request){
-        throw new apiError(500,"request was not created")
-    }
+
+  
+  
+
+    
 
     return res.status(200).json(new apiResponse(201,request,"request was created successfully"))
 
@@ -124,16 +157,23 @@ const deleteRequest=asyncHandler(async(req,res)=>{
         }
     })
     if(!request){
-        throw new apiError(400,"this item dosent exist")
+        throw new apiError(400,"this request dosent exist")
 
     }
 
-    if(request)
+    const item =await prisma.items.findUnique({
+        where:{
+            id:request.itemId
+        }
+    })
 
-
+    if(item.status==="SOLD"){
+        throw new apiError(400,"you cannot delete a request for a sold item")
+    }
 
     await prisma.request.delete({
-        data:request
+        where:{id:id}
+        
     })
 
     return res.status(200).json(
@@ -141,7 +181,6 @@ const deleteRequest=asyncHandler(async(req,res)=>{
     )
 
 })
-
 
 
 
