@@ -13,7 +13,8 @@ const prisma = new PrismaClient()
 //seller registers an item
 const addItems= asyncHandler(async(req,res)=>{
 
-    const{name,price,description,status,imageUrl,userId}=req.body
+    const{name,price,description,status,imageUrl}=req.body
+    const sellerId =req.user.id
 
     if(!(name||price||status)){//add img url
         throw new apiError(400,"all the fields need to be filled")
@@ -29,7 +30,7 @@ const addItems= asyncHandler(async(req,res)=>{
             description,
             imageUrl,
             status,
-            userId
+            userId:sellerId
         }
     })
 
@@ -98,7 +99,7 @@ const deleteItem=asyncHandler(async(req,res)=>{
             id:id
         }
     }) 
-    console.log(item)
+   
 
     if(!item){
         throw new apiError(400,"cannot delete an item which doesnt exist")

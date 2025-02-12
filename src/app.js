@@ -28,6 +28,9 @@ import itemRouter from "./routes/item.routes.js"
 
 app.use("/api/v1",itemRouter)
 
+import requestRouter from "./routes/request.routes.js"
+
+ app.use("/api/v1",requestRouter)
 
 
 

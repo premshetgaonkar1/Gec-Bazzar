@@ -20,7 +20,7 @@ import { apiError } from '../utils/apiError.js';
     
         req.user= decodedToken
 
-        console.log("this is the decoded token ",decodedToken)
+        // console.log("this is the decoded token ",decodedToken)
     
         next()
 
@@ -32,4 +32,34 @@ import { apiError } from '../utils/apiError.js';
 
 })
 
-export{verifyToken}
+
+const verifySeller=asyncHandler(async(req,res,next)=>{
+
+    // const accessToken=req.cookies?.accessToken
+
+    
+
+    // const decodedToken=jwt.verify(token,process.env.ACCESS_TOKEN_SECRET)
+
+    // if(!decodedToken){
+    //     throw new apiError(401,"unauthorized access")
+    // }
+
+    console.log(req.user)
+
+    if(!req.user){
+        throw new apiError(401,"unauthorized request")
+    }
+    
+
+    if(req.user.role!=="SELLER"){
+        throw new apiError(403,"you are not an authorized seller")
+    }
+
+    next()
+
+
+
+})
+
+export{verifyToken,verifySeller}
